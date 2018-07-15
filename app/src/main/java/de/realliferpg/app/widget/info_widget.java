@@ -45,7 +45,7 @@ public class info_widget extends AppWidgetProvider implements RequestCallbackInt
     }
 
     @Override
-    public void onResponse(JSONObject response, Class type) {
+    public void onResponse(Object response, Class type) {
         final int count = WidgetIds.length;
         for (int i = 0; i < count; i++) {
             int widgetId = WidgetIds[i];
