@@ -117,7 +117,6 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
             final ArrayList<Server> servers = new ArrayList<>(Arrays.asList(value.data));
 
             ServerListAdapter adapter = new ServerListAdapter(view.getContext(), servers);
-
             final ListView listView = view.findViewById(R.id.lv_main_serverList);
             listView.setAdapter(adapter);
             sc.setRefreshing(false);

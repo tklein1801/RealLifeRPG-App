@@ -1,16 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="horizontal"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#55000000">
+    android:orientation="vertical" >
+
+    <LinearLayout
+        style="@style/widget_views"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/id_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_id"
+            style="@style/widget_text" />
+
+        <TextView
+            android:id="@+id/id_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="."
+            style="@style/widget_text" />
+    </LinearLayout>
 
     <TextView
-        android:id="@+id/lv_widget_serverList"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1"/>
-
-
+        android:id="@+id/launch_url"
+        style="@style/widget_views"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/URL"/>
 </LinearLayout>
