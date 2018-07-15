@@ -4,8 +4,12 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.support.design.widget.CoordinatorLayout;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.text.Html;
@@ -31,6 +35,8 @@ import de.realliferpg.app.R;
 import de.realliferpg.app.adapter.ServerListAdapter;
 import de.realliferpg.app.helper.ApiHelper;
 import de.realliferpg.app.interfaces.RequestCallbackInterface;
+import de.realliferpg.app.objects.CustomNetworkError;
+import de.realliferpg.app.objects.PlayerInfo;
 import de.realliferpg.app.objects.Server;
 
 
@@ -65,13 +71,14 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
 
         final ApiHelper apiHelper = new ApiHelper(this);
         apiHelper.getServers();
+        apiHelper.getPlayerStats();
 
         SwipeRefreshLayout sc = view.findViewById(R.id.sc_main);
         sc.setColorSchemeColors(view.getResources().getColor(R.color.primaryColor));
         sc.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                apiHelper.getServers();
+                apiHelper.getServers(); apiHelper.getPlayerStats();
             }
         });
 
@@ -98,7 +105,7 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
     }
 
     @Override
-    public void onResponse(JSONObject response, Class type) {
+    public void onResponse(Object response, Class type) {
         SwipeRefreshLayout sc = view.findViewById(R.id.sc_main);
 
         if (type.equals(Server.Wrapper.class)) {
@@ -110,28 +117,26 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
 
             ServerListAdapter adapter = new ServerListAdapter(view.getContext(), servers);
 
-            ListView listView = view.findViewById(R.id.lv_main_serverList);
+            final ListView listView = view.findViewById(R.id.lv_main_serverList);
             listView.setAdapter(adapter);
             sc.setRefreshing(false);
 
-            final ListView lv = view.findViewById(R.id.lv_main_serverList);
-
-            lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 public void onItemClick(AdapterView<?> myAdapter, View myView, int myItemInt, long mylng) {
-                    String selectedFromList = (String) lv.getItemAtPosition(myItemInt).toString();
-                    Log.d("test", Arrays.toString(servers.get(myItemInt).Players));
+                    String selectedFromList = (String) listView.getItemAtPosition(myItemInt).toString();
+                    Log.d("MainFragment", Arrays.toString(servers.get(myItemInt).Players));
 
                     AlertDialog ad = new AlertDialog.Builder(view.getContext()).create();
                     ad.setCancelable(false); // This blocks the 'BACK' button
 
-                    String players = "";
+                    StringBuilder players = new StringBuilder();
 
                     for(String player: servers.get(myItemInt).Players)
                     {
-                        players = players + "\n" + player;
+                        players.append("\n").append(player);
                     }
                     
-                    ad.setMessage(players);
+                    ad.setMessage(players.toString());
                     ad.setButton("schließen", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
@@ -141,6 +146,33 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
                     ad.show();
                 }
             });
+        }else if (type.equals(PlayerInfo.Wrapper.class)) {
+            Gson gson = new Gson();
+
+            PlayerInfo.Wrapper value = gson.fromJson(response.toString(), PlayerInfo.Wrapper.class);
+
+            PlayerInfo playerInfo = value.data[0];
+
+            TextView tvPiName = view.findViewById(R.id.tv_main_playerInfo_name);
+            TextView tvPiPID = view.findViewById(R.id.tv_main_playerInfo_pid);
+            TextView tvPiGUID = view.findViewById(R.id.tv_main_playerInfo_guid);
+
+            TextView tvPiInfoBank = view.findViewById(R.id.tv_main_playerInfo_bank);
+            TextView tvPiInfoCash = view.findViewById(R.id.tv_main_playerInfo_cash);
+            TextView tvPiInfoLevel = view.findViewById(R.id.tv_main_playerInfo_level);
+            TextView tvPiInfoSkill = view.findViewById(R.id.tv_main_playerInfo_skill);
+
+            tvPiName.setText(playerInfo.name);
+            tvPiPID.setText(playerInfo.pid);
+            tvPiGUID.setText(playerInfo.guid);
+
+            tvPiInfoBank.setText(String.valueOf( playerInfo.bankacc + " $"));
+            tvPiInfoCash.setText(String.valueOf( playerInfo.cash  + " $"));
+            tvPiInfoLevel.setText(String.valueOf( playerInfo.level));
+            tvPiInfoSkill.setText(String.valueOf( playerInfo.skillpoint));
+
+        }else if (type.equals(CustomNetworkError.class)){
+
         }
     }
 
