@@ -11,14 +11,15 @@ import android.widget.TextView;
 import java.util.ArrayList;
 
 import de.realliferpg.app.R;
+import de.realliferpg.app.objects.Shop;
+import de.realliferpg.app.objects.ShopEntry;
 import de.realliferpg.app.objects.Vehicle;
 
 public class InfoAdapter<T> extends RecyclerView.Adapter<InfoAdapter.ViewHolder> {
     private ArrayList<T> dataArray;
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvHead;
-        TextView tvSub;
+        TextView tvHead, tvSub, tvRight;
 
         private Context context;
 
@@ -27,6 +28,7 @@ public class InfoAdapter<T> extends RecyclerView.Adapter<InfoAdapter.ViewHolder>
 
             tvHead = itemView.findViewById(R.id.tv_list_info_head);
             tvSub = itemView.findViewById(R.id.tv_list_info_sub);
+            tvRight = itemView.findViewById(R.id.tv_list_info_right);
 
             context = itemView.getContext();
         }
@@ -42,8 +44,7 @@ public class InfoAdapter<T> extends RecyclerView.Adapter<InfoAdapter.ViewHolder>
     @Override
     public InfoAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent,
                                                      int viewType) {
-        View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.list_item_info,parent, false);
+        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.list_item_info, parent, false);
 
         return new ViewHolder(v);
     }
@@ -54,11 +55,20 @@ public class InfoAdapter<T> extends RecyclerView.Adapter<InfoAdapter.ViewHolder>
 
         Object object = dataArray.get(position);
 
-        if(object instanceof Vehicle){
+        if (object instanceof Vehicle) {
             Vehicle vehicle = (Vehicle) object;
 
-            holder.tvHead.setText(vehicle.displayName);
-            holder.tvSub.setText(vehicle.displayName);
+            holder.tvHead.setText(vehicle.name);
+            holder.tvSub.setText("V-Items: " + vehicle.v_space + " kg\nLevel: " + vehicle.level);
+
+            holder.tvRight.setText(String.valueOf(vehicle.price) + "$");
+        } else if (object instanceof ShopEntry) {
+            ShopEntry shop = (ShopEntry) object;
+
+            holder.tvHead.setText(shop.name);
+            holder.tvSub.setText("Level: " + shop.level);
+
+            holder.tvRight.setText(String.valueOf(shop.price) + "$");
         }
     }
 

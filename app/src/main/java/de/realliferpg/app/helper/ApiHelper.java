@@ -9,6 +9,9 @@ import de.realliferpg.app.interfaces.RequestCallbackInterface;
 import de.realliferpg.app.objects.Changelog;
 import de.realliferpg.app.objects.PlayerInfo;
 import de.realliferpg.app.objects.Server;
+import de.realliferpg.app.objects.Shop;
+import de.realliferpg.app.objects.ShopEntry;
+import de.realliferpg.app.objects.Vehicle;
 
 public class ApiHelper {
 
@@ -32,8 +35,29 @@ public class ApiHelper {
         NetworkHelper networkHelper = new NetworkHelper();
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(Singleton.getInstance().getContext());
-        String secret = prefs.getString("player_api_key","");
+        String secret = prefs.getString("api_player_key","");
 
         networkHelper.doJSONRequest(Constants.URL_PLAYERSTATS + secret,callbackInterface,PlayerInfo.Wrapper.class);
     }
+
+    public void getShops(int shopType) {
+        NetworkHelper networkHelper = new NetworkHelper();
+
+        if(shopType == Constants.CATEGORY_SHOP){
+            networkHelper.doJSONRequest(Constants.URL_SHOPTYPES_ITEMS,callbackInterface,Shop.Wrapper.class);
+        }else if(shopType == Constants.CATEGORY_VEHICLE){
+            networkHelper.doJSONRequest(Constants.URL_SHOPTYPES_VEHICLES,callbackInterface,Shop.Wrapper.class);
+        }
+    }
+
+    public void getShopInfo(int shopType,String shop) {
+        NetworkHelper networkHelper = new NetworkHelper();
+
+        if(shopType == Constants.CATEGORY_SHOP){
+            networkHelper.doJSONRequest(Constants.URL_SHOP_ITEMS + shop,callbackInterface,ShopEntry.Wrapper.class);
+        }else if(shopType == Constants.CATEGORY_VEHICLE){
+            networkHelper.doJSONRequest(Constants.URL_SHOP_VEHICLES + shop,callbackInterface,Vehicle.Wrapper.class);
+        }
+    }
+
 }
