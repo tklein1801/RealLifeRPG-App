@@ -26,28 +26,19 @@ import de.realliferpg.app.R;
 
 public class info_widget extends AppWidgetProvider implements RequestCallbackInterface {
 
+    public static final String REFRESH_ACTION = "com.realliferpg.REFRESH_ACTION";
+
 
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.info_widget);
 
-        Intent refresh = new Intent(context, info_widget.class);
-        PendingIntent refreshIntent = PendingIntent.getBroadcast(context, 0, refresh, 0);
-        views.setOnClickPendingIntent(R.id.launch_url, refreshIntent);
+
         appWidgetManager.updateAppWidget(new ComponentName(context,info_widget.class), views);
 
-        Object response = Singleton.getInstance().getServerinfo();
+        final ArrayList<Server> servers = Singleton.getInstance().getServerinfo();
 
-        if (response != null){
-
-
-            Gson gson = new Gson();
-            Server.Wrapper value = gson.fromJson(response.toString(), Server.Wrapper.class);
-
-            final ArrayList<Server> servers = new ArrayList<>(Arrays.asList(value.data));
-
-            views.setTextViewText(R.id.id_value, servers.get(0).Servername);
-        }
+        views.setTextViewText(R.id.id_value, servers.get(0).Servername);
 
 
 
@@ -65,18 +56,49 @@ public class info_widget extends AppWidgetProvider implements RequestCallbackInt
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
 
         //Update all instances of this widget//
+        final ArrayList<Server> servers = Singleton.getInstance().getServerinfo();
 
-        for (int appWidgetId : appWidgetIds) {
+
+
+        if (servers != null){
+
+            for (int appWidgetId : appWidgetIds) {
+                updateAppWidget(context, appWidgetManager, appWidgetId);
+            }
+
+        }else {
 
             ApiHelper apiHelper = new ApiHelper(this);
             apiHelper.getServers();
 
-            updateAppWidget(context, appWidgetManager, appWidgetId);
+            RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.info_widget);
+
+            Intent intentServiceCall = new Intent(context, info_widget.class);
+            intentServiceCall.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetIds);
+
+            Intent refreshIntent = new Intent(context, info_widget.class);
+            final Intent intent = refreshIntent.setAction(info_widget.REFRESH_ACTION);
+            refreshIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds);
+            intentServiceCall.setData(Uri.parse(intentServiceCall.toUri(Intent.URI_INTENT_SCHEME)));
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, refreshIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+            rv.setOnClickPendingIntent(R.id.id_value, pendingIntent);
+            appWidgetManager.updateAppWidget(appWidgetIds, rv);
         }
+
     }
 
     @Override
     public void onResponse(Object response, Class type) {
-        Singleton.getInstance().setServerinfo(response);
+        Log.d("info_widget",response.toString());
+        Gson gson = new Gson();
+        Server.Wrapper value = gson.fromJson(response.toString(), Server.Wrapper.class);
+
+        final ArrayList<Server> servers = new ArrayList<>(Arrays.asList(value.data));
+
+        Singleton.getInstance().setServerinfo(servers);
+
+
+
+
     }
 }
