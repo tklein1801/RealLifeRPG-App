@@ -14,7 +14,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 
@@ -30,8 +29,6 @@ import de.realliferpg.app.adapter.InfoSpinnerAdapter;
 import de.realliferpg.app.helper.ApiHelper;
 import de.realliferpg.app.interfaces.RequestCallbackInterface;
 import de.realliferpg.app.objects.CustomNetworkError;
-import de.realliferpg.app.objects.License;
-import de.realliferpg.app.objects.Server;
 import de.realliferpg.app.objects.Shop;
 import de.realliferpg.app.objects.ShopEntry;
 import de.realliferpg.app.objects.Vehicle;
@@ -65,9 +62,9 @@ public class InfoFragment extends Fragment implements RequestCallbackInterface {
         currentCategory = Constants.CATEGORY_VEHICLE;
 
         final ProgressBar pbContent = view.findViewById(R.id.pb_info_content);
-        pbContent.setVisibility(View.GONE);
+        pbContent.setVisibility(View.VISIBLE);
         final ProgressBar pbCategory = view.findViewById(R.id.pb_info_category);
-        pbCategory.setVisibility(View.GONE);
+        pbCategory.setVisibility(View.VISIBLE);
 
 
         BottomNavigationView bnv = view.findViewById(R.id.bnv_info);
@@ -75,10 +72,10 @@ public class InfoFragment extends Fragment implements RequestCallbackInterface {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 switch (item.getItemId()) {
-                    case R.id.action_info_vehicles:
+                    case R.id.bnv_info_vehicles:
                         currentCategory = Constants.CATEGORY_VEHICLE;
                         break;
-                    case R.id.action_info_shops:
+                    case R.id.bnv_info_shops:
                         currentCategory = Constants.CATEGORY_SHOP;
                         break;
                     //case R.id.action_info_licenses:
@@ -118,11 +115,18 @@ public class InfoFragment extends Fragment implements RequestCallbackInterface {
     }
 
     private void onCategoryChanged(){
+        // clear spinner
         Spinner shopSelect = view.findViewById(R.id.sp_info_select);
         shopSelect.setAdapter(null);
 
         ProgressBar pbCategory = view.findViewById(R.id.pb_info_category);
         pbCategory.setVisibility(View.VISIBLE);
+
+        // clear content
+        RecyclerView recyclerView = view.findViewById(R.id.rv_info_main);
+        recyclerView.setAdapter(null);
+        ProgressBar pbContent = view.findViewById(R.id.pb_info_content);
+        pbContent.setVisibility(View.VISIBLE);
 
         ApiHelper apiHelper = new ApiHelper(this);
         apiHelper.getShops(currentCategory);

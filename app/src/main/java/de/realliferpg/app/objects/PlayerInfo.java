@@ -20,7 +20,6 @@ public class PlayerInfo {
     public String adminlevel;
     public String donatorlvl;
 
-
     public int arrested;
     public int citizen;
     public int tutorial;
@@ -29,6 +28,7 @@ public class PlayerInfo {
     public int level;
     public int exp;
     public int skillpoint;
+    public int level_progress;
 
     public int hunger;
     public int thirst;
@@ -45,12 +45,15 @@ public class PlayerInfo {
     public int server_id;
     public String updated_at;
     public String created_at;
+    public ApiDateTime last_seen;
 
     public String avatar;
     public String avatar_full;
     public String avatar_medium;
     public String profilename;
     public String profileurl;
+
+    public Donation[] donations;
 
     @Override
     public String toString() {

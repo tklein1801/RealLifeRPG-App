@@ -1,19 +1,13 @@
 package de.realliferpg.app.fragments;
 
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
-import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.widget.SwipeRefreshLayout;
-import android.text.Html;
-import android.text.SpannableString;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -22,12 +16,8 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.android.volley.VolleyError;
 import com.google.gson.Gson;
-
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,6 +66,18 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
         apiHelper.getServers();
         apiHelper.getPlayerStats();
 
+        final TextView tvPiName = view.findViewById(R.id.tv_main_playerInfo_name);
+        final TextView tvPiPID = view.findViewById(R.id.tv_main_playerInfo_pid);
+        final TextView tvPiGUID = view.findViewById(R.id.tv_main_playerInfo_guid);
+        tvPiName.setText("");
+        tvPiPID.setText("");
+        tvPiGUID.setText("");
+
+        final ProgressBar pbServer = view.findViewById(R.id.pb_main_server);
+        final ProgressBar pbPlayer = view.findViewById(R.id.pb_main_player);
+        pbPlayer.setVisibility(View.VISIBLE);
+        pbServer.setVisibility(View.VISIBLE);
+
         SwipeRefreshLayout sc = view.findViewById(R.id.sc_main);
         sc.setColorSchemeColors(view.getResources().getColor(R.color.primaryColor));
         sc.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
@@ -83,6 +85,14 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
             public void onRefresh() {
                 apiHelper.getServers();
                 apiHelper.getPlayerStats();
+
+                pbPlayer.setVisibility(View.VISIBLE);
+                pbServer.setVisibility(View.VISIBLE);
+
+                tvPiName.setText("");
+                tvPiPID.setText("");
+                tvPiGUID.setText("");
+
                 final ListView listView = view.findViewById(R.id.lv_main_serverList);
                 listView.setAdapter(null);
             }
@@ -122,6 +132,10 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
             final ArrayList<Server> servers = new ArrayList<>(Arrays.asList(value.data));
 
             ServerListAdapter adapter = new ServerListAdapter(view.getContext(), servers);
+
+            final ProgressBar pbServer = view.findViewById(R.id.pb_main_server);
+            pbServer.setVisibility(View.GONE);
+
             final ListView listView = view.findViewById(R.id.lv_main_serverList);
             listView.setAdapter(adapter);
             sc.setRefreshing(false);
@@ -142,7 +156,7 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
                     }
                     
                     ad.setMessage(players.toString());
-                    ad.setButton("schließen", new DialogInterface.OnClickListener() {
+                    ad.setButton(getString(R.string.str_close), new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             dialog.dismiss();
@@ -177,6 +191,9 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
             tvPiInfoLevel.setText(String.valueOf( playerInfo.level));
             tvPiInfoSkill.setText(String.valueOf( playerInfo.skillpoint));
 
+            final ProgressBar pbPlayer = view.findViewById(R.id.pb_main_player);
+            pbPlayer.setVisibility(View.GONE);
+
             Singleton.getInstance().setPlayerInfo(playerInfo);
             mListener.onFragmentInteraction(Uri.parse("update_login_state"));
         }else if (type.equals(CustomNetworkError.class)){
@@ -187,16 +204,6 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
         }
     }
 
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
     public interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);

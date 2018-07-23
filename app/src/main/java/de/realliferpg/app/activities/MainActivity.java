@@ -2,6 +2,7 @@ package de.realliferpg.app.activities;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.net.Uri;
 import android.os.Bundle;
@@ -14,6 +15,8 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import de.realliferpg.app.R;
@@ -22,11 +25,16 @@ import de.realliferpg.app.fragments.ChangelogFragment;
 import de.realliferpg.app.fragments.ImprintFragment;
 import de.realliferpg.app.fragments.InfoFragment;
 import de.realliferpg.app.fragments.MainFragment;
+import de.realliferpg.app.fragments.PlayerDonationFragment;
+import de.realliferpg.app.fragments.PlayerFragment;
+import de.realliferpg.app.fragments.PlayerStatsFragment;
 import de.realliferpg.app.objects.PlayerInfo;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, ImprintFragment.OnFragmentInteractionListener,
-        ChangelogFragment.OnFragmentInteractionListener, MainFragment.OnFragmentInteractionListener, InfoFragment.OnFragmentInteractionListener {
+        ChangelogFragment.OnFragmentInteractionListener, MainFragment.OnFragmentInteractionListener, InfoFragment.OnFragmentInteractionListener,
+        PlayerFragment.OnFragmentInteractionListener, PlayerStatsFragment.OnFragmentInteractionListener,
+        PlayerDonationFragment.OnFragmentInteractionListener{
 
 
     @SuppressLint("WrongViewCast")
@@ -52,10 +60,21 @@ public class MainActivity extends AppCompatActivity
 
         // Load Main fragment
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-        MainFragment imprintFragment = new MainFragment();
-        transaction.replace(R.id.include_main_content, imprintFragment);
+        MainFragment mainFragment = new MainFragment();
+        transaction.replace(R.id.include_main_content, mainFragment);
         transaction.addToBackStack(null);
         transaction.commit();
+
+        View header = navigationView.getHeaderView(0);
+        ImageButton imageButton = header.findViewById(R.id.ib_nav_scanCode);
+        imageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(v.getContext(), SettingsActivity.class);
+                intent.putExtra("scan_code",true);
+                startActivity(intent);
+            }
+        });
     }
 
     @Override
@@ -105,6 +124,9 @@ public class MainActivity extends AppCompatActivity
         } else if (id == R.id.nav_info) {
             InfoFragment infoFragment = new InfoFragment();
             transaction.replace(R.id.include_main_content, infoFragment);
+        } else if (id == R.id.nav_player) {
+            PlayerFragment playerFragment = new PlayerFragment();
+            transaction.replace(R.id.include_main_content, playerFragment);
         } else if (id == R.id.nav_website) {
             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.realliferpg.de"));
             startActivity(browserIntent);
@@ -143,6 +165,21 @@ public class MainActivity extends AppCompatActivity
 
                 break;
             }
+            case "fragment_player_change_to_stats": {
+                changePlayerFragment(new PlayerStatsFragment());
+                break;
+            }
+            case "fragment_player_change_to_donation": {
+                changePlayerFragment(new PlayerDonationFragment());
+                break;
+            }
         }
+    }
+
+    void changePlayerFragment(Fragment fragment){
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        transaction.replace(R.id.include_player_content, fragment);
+        transaction.addToBackStack(null);
+        transaction.commit();
     }
 }
