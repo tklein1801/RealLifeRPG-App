@@ -3,10 +3,14 @@ package de.realliferpg.app.fragments;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.BaseExpandableListAdapter;
+import android.widget.ExpandableListAdapter;
 import android.widget.ExpandableListView;
 import android.widget.ProgressBar;
 
@@ -20,16 +24,19 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
+import de.realliferpg.app.Constants;
 import de.realliferpg.app.R;
+import de.realliferpg.app.Singleton;
 import de.realliferpg.app.adapter.ChangelogAdapter;
 import de.realliferpg.app.helper.ApiHelper;
+import de.realliferpg.app.interfaces.FragmentInteractionInterface;
 import de.realliferpg.app.interfaces.RequestCallbackInterface;
 import de.realliferpg.app.objects.Changelog;
+import de.realliferpg.app.objects.CustomNetworkError;
 
 public class ChangelogFragment extends Fragment implements RequestCallbackInterface {
 
-    private ExpandableListView listView;
-    private OnFragmentInteractionListener mListener;
+    private FragmentInteractionInterface mListener;
     private View view;
 
     public ChangelogFragment() {
@@ -54,11 +61,24 @@ public class ChangelogFragment extends Fragment implements RequestCallbackInterf
 
         this.view = inflater.inflate(R.layout.fragment_changelog, container, false);
 
-        ApiHelper apiHelper = new ApiHelper(this);
+        final ApiHelper apiHelper = new ApiHelper(this);
         apiHelper.getChangelog();
 
-        ProgressBar pbChangelog = view.findViewById(R.id.pb_changelog_main);
+        final ProgressBar pbChangelog = view.findViewById(R.id.pb_changelog_main);
         pbChangelog.setVisibility(View.VISIBLE);
+
+        SwipeRefreshLayout sc = view.findViewById(R.id.srl_changelog);
+        sc.setColorSchemeColors(view.getResources().getColor(R.color.primaryColor));
+        sc.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                apiHelper.getChangelog();
+                pbChangelog.setVisibility(View.VISIBLE);
+
+                ExpandableListView listView = view.findViewById(R.id.lv_changelog_main);
+                listView.setAdapter((BaseExpandableListAdapter)null);
+            }
+        });
 
         return view;
     }
@@ -67,6 +87,9 @@ public class ChangelogFragment extends Fragment implements RequestCallbackInterf
     @Override
     public void onResponse(Object response, Class type) {
 
+        SwipeRefreshLayout sc = view.findViewById(R.id.srl_changelog);
+        sc.setRefreshing(false);
+
         if (type.equals(Changelog.Wrapper.class)) {
 
             Gson gson = new Gson();
@@ -74,7 +97,7 @@ public class ChangelogFragment extends Fragment implements RequestCallbackInterf
 
             ArrayList<Changelog> changelogs = new ArrayList<>(Arrays.asList(value.data));
 
-            listView = view.findViewById(R.id.lv_changelog_main);
+            final ExpandableListView listView = view.findViewById(R.id.lv_changelog_main);
 
             ArrayList<Changelog> temp = new ArrayList<>();
 
@@ -113,6 +136,24 @@ public class ChangelogFragment extends Fragment implements RequestCallbackInterf
                     previousItem = groupPosition;
                 }
             });
+        }else if(type.equals(CustomNetworkError.class)){
+            CustomNetworkError error = (CustomNetworkError) response;
+
+            ProgressBar pbChangelog = view.findViewById(R.id.pb_changelog_main);
+            pbChangelog.setVisibility(View.GONE);
+
+            Singleton.getInstance().setErrorMsg(error.toString());
+            Snackbar snackbar = Snackbar.make(view.findViewById(R.id.cl_changelog), R.string.str_error_occurred, Constants.ERROR_SNACKBAR_DURATION);
+
+            snackbar.setAction(R.string.str_view, new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    mListener.onFragmentInteraction(ChangelogFragment.class,Uri.parse("open_error"));
+                }
+            });
+
+            snackbar.show();
+            Singleton.getInstance().setCurrentSnackbar(snackbar);
         }
     }
 
@@ -129,8 +170,8 @@ public class ChangelogFragment extends Fragment implements RequestCallbackInterf
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        if (context instanceof OnFragmentInteractionListener) {
-            mListener = (OnFragmentInteractionListener) context;
+        if (context instanceof FragmentInteractionInterface) {
+            mListener = (FragmentInteractionInterface) context;
         } else {
             throw new RuntimeException(context.toString()
                     + " must implement OnFragmentInteractionListener");
@@ -143,18 +184,4 @@ public class ChangelogFragment extends Fragment implements RequestCallbackInterf
         mListener = null;
     }
 
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
-    }
 }

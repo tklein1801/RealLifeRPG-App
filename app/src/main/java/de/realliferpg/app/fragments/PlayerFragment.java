@@ -7,12 +7,14 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentTransaction;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.support.v4.app.Fragment;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -24,6 +26,7 @@ import de.realliferpg.app.R;
 import de.realliferpg.app.Singleton;
 import de.realliferpg.app.helper.ApiHelper;
 import de.realliferpg.app.helper.FormatHelper;
+import de.realliferpg.app.interfaces.FragmentInteractionInterface;
 import de.realliferpg.app.interfaces.RequestCallbackInterface;
 import de.realliferpg.app.objects.CustomNetworkError;
 import de.realliferpg.app.objects.PlayerInfo;
@@ -31,7 +34,7 @@ import de.realliferpg.app.objects.PlayerInfo;
 public class PlayerFragment extends Fragment implements RequestCallbackInterface {
 
     private View view;
-    private OnFragmentInteractionListener mListener;
+    private FragmentInteractionInterface mListener;
 
     public PlayerFragment() {
         // Required empty public constructor
@@ -55,10 +58,8 @@ public class PlayerFragment extends Fragment implements RequestCallbackInterface
                              Bundle savedInstanceState) {
         view = inflater.inflate(R.layout.fragment_player, container, false);
 
-        mListener.onFragmentInteraction(Uri.parse("fragment_player_change_to_stats"));
-
+        final ApiHelper apiHelper = new ApiHelper(this);
         if(Singleton.getInstance().getPlayerInfo() == null){
-            ApiHelper apiHelper = new ApiHelper(this);
             apiHelper.getPlayerStats();
         }else{
             showPlayerInfo();
@@ -71,13 +72,22 @@ public class PlayerFragment extends Fragment implements RequestCallbackInterface
 
                 switch (item.getItemId()) {
                     case R.id.bnv_player_stats:
-                        mListener.onFragmentInteraction(Uri.parse("fragment_player_change_to_stats"));
+                        mListener.onFragmentInteraction(PlayerFragment.class,Uri.parse("fragment_player_change_to_stats"));
                         break;
                     case R.id.bnv_player_donation:
-                        mListener.onFragmentInteraction(Uri.parse("fragment_player_change_to_donation"));
+                        mListener.onFragmentInteraction(PlayerFragment.class,Uri.parse("fragment_player_change_to_donation"));
                         break;
                 }
                 return true;
+            }
+        });
+
+        SwipeRefreshLayout sc = view.findViewById(R.id.srl_info);
+        sc.setColorSchemeColors(view.getResources().getColor(R.color.primaryColor));
+        sc.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                apiHelper.getPlayerStats();
             }
         });
 
@@ -86,6 +96,11 @@ public class PlayerFragment extends Fragment implements RequestCallbackInterface
 
     public void showPlayerInfo(){
         PlayerInfo playerInfo = Singleton.getInstance().getPlayerInfo();
+
+        mListener.onFragmentInteraction(PlayerFragment.class,Uri.parse("fragment_player_change_to_stats"));
+
+        BottomNavigationView bnv = view.findViewById(R.id.bnv_player);
+        bnv.setSelectedItemId(R.id.bnv_player_stats);
 
         ImageView ivProfilePic = view.findViewById(R.id.iv_player_profile);
 
@@ -101,8 +116,8 @@ public class PlayerFragment extends Fragment implements RequestCallbackInterface
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        if (context instanceof OnFragmentInteractionListener) {
-            mListener = (OnFragmentInteractionListener) context;
+        if (context instanceof FragmentInteractionInterface) {
+            mListener = (FragmentInteractionInterface) context;
         } else {
             throw new RuntimeException(context.toString()
                     + " must implement OnFragmentInteractionListener");
@@ -119,26 +134,26 @@ public class PlayerFragment extends Fragment implements RequestCallbackInterface
     public void onResponse(Object response, Class type) {
         if (type.equals(PlayerInfo.Wrapper.class)) {
             Gson gson = new Gson();
-            FormatHelper formatHelper = new FormatHelper();
 
             PlayerInfo.Wrapper value = gson.fromJson(response.toString(), PlayerInfo.Wrapper.class);
 
             PlayerInfo playerInfo = value.data[0];
 
             Singleton.getInstance().setPlayerInfo(playerInfo);
-            mListener.onFragmentInteraction(Uri.parse("update_login_state"));
+            mListener.onFragmentInteraction(PlayerFragment.class,Uri.parse("update_login_state"));
+
+            SwipeRefreshLayout sc = view.findViewById(R.id.srl_info);
+            sc.setRefreshing(false);
 
             showPlayerInfo();
+
         } else if (type.equals(CustomNetworkError.class)) {
             CustomNetworkError error = (CustomNetworkError) response;
-            Snackbar snackbar = Snackbar.make(view.findViewById(R.id.cl_main), error.toString(), Snackbar.LENGTH_LONG);
 
-            snackbar.show();
+            Singleton.getInstance().setErrorMsg(error.toString());
+            mListener.onFragmentInteraction(PlayerFragment.class,Uri.parse("open_error"));
+
         }
-    }
-
-    public interface OnFragmentInteractionListener {
-        void onFragmentInteraction(Uri uri);
     }
 
 }

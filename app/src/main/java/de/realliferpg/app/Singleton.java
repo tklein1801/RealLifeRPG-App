@@ -1,6 +1,7 @@
 package de.realliferpg.app;
 
 import android.content.Context;
+import android.support.design.widget.Snackbar;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -25,7 +26,12 @@ public class Singleton {
     private Context context;
     private ArrayList<Server> servers;
 
+    private Snackbar currentSnackbar;
+
     private PlayerInfo playerInfo;
+
+    private String scanResponse;
+    private String errorMsg;
 
     public RequestQueue getRequestQueue() {
         if (volleyQueue == null) {
@@ -55,5 +61,37 @@ public class Singleton {
 
     public void setPlayerInfo(PlayerInfo playerInfo) {
         this.playerInfo = playerInfo;
+    }
+
+    public String getScanResponse() {
+        if(scanResponse == null){
+            scanResponse = "";
+        }
+        return scanResponse;
+    }
+
+    public void setScanResponse(String scanResponse) {
+        this.scanResponse = scanResponse;
+    }
+
+    public String getErrorMsg() {
+        if(scanResponse == null){
+            scanResponse = context.getString(R.string.str_no_msg);
+        }
+        return errorMsg;
+    }
+
+    public void setErrorMsg(String errorMsg) {
+        this.errorMsg = errorMsg;
+    }
+
+    public void setCurrentSnackbar(Snackbar currentSnackbar) {
+        this.currentSnackbar = currentSnackbar;
+    }
+
+    public void dismissSnackbar(){
+        if(currentSnackbar != null){
+            currentSnackbar.dismiss();
+        }
     }
 }
