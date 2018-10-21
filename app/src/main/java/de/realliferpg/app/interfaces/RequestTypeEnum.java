@@ -1,0 +1,5 @@
+package de.realliferpg.app.interfaces;
+
+public enum RequestTypeEnum {
+    PLAYER,SERVER,SERVER_LOGS,CHANGELOG,CURRENT_MARKET_PRICES,SHOP,SHOP_INFO_VEHICLE,SHOP_INFO_ITEM, NETWORK_ERROR
+}

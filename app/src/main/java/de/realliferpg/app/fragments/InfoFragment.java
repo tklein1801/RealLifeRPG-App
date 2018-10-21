@@ -17,10 +17,7 @@ import android.widget.AdapterView;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 
-import com.google.gson.Gson;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import de.realliferpg.app.Constants;
 import de.realliferpg.app.R;
@@ -28,15 +25,17 @@ import de.realliferpg.app.Singleton;
 import de.realliferpg.app.adapter.InfoAdapter;
 import de.realliferpg.app.adapter.InfoSpinnerAdapter;
 import de.realliferpg.app.helper.ApiHelper;
+import de.realliferpg.app.interfaces.CallbackNotifyInterface;
 import de.realliferpg.app.interfaces.FragmentInteractionInterface;
 import de.realliferpg.app.interfaces.RequestCallbackInterface;
+import de.realliferpg.app.interfaces.RequestTypeEnum;
 import de.realliferpg.app.objects.CustomNetworkError;
 import de.realliferpg.app.objects.Shop;
-import de.realliferpg.app.objects.ShopEntry;
-import de.realliferpg.app.objects.Vehicle;
+import de.realliferpg.app.objects.ShopItem;
+import de.realliferpg.app.objects.ShopVehicle;
 
 
-public class InfoFragment extends Fragment implements RequestCallbackInterface {
+public class InfoFragment extends Fragment implements CallbackNotifyInterface {
 
     private FragmentInteractionInterface mListener;
     private View view;
@@ -90,7 +89,7 @@ public class InfoFragment extends Fragment implements RequestCallbackInterface {
         });
 
         final RecyclerView recyclerView = view.findViewById(R.id.rv_info_main);
-        final ApiHelper apiHelper = new ApiHelper(this);
+        final ApiHelper apiHelper = new ApiHelper((RequestCallbackInterface) getActivity());
         apiHelper.getShops(currentCategory);
 
         final Spinner shopSelect = view.findViewById(R.id.sp_info_select);
@@ -130,7 +129,7 @@ public class InfoFragment extends Fragment implements RequestCallbackInterface {
         ProgressBar pbContent = view.findViewById(R.id.pb_info_content);
         pbContent.setVisibility(View.VISIBLE);
 
-        ApiHelper apiHelper = new ApiHelper(this);
+        ApiHelper apiHelper = new ApiHelper((RequestCallbackInterface) getActivity());
         apiHelper.getShops(currentCategory);
     }
 
@@ -151,69 +150,71 @@ public class InfoFragment extends Fragment implements RequestCallbackInterface {
         mListener = null;
     }
 
-    @Override
-    public void onResponse(Object response, Class type) {
-        if (type.equals(Shop.Wrapper.class)) {
-            Gson gson = new Gson();
+    private void updateShopInfo(RequestTypeEnum type){
+        RecyclerView recyclerView = view.findViewById(R.id.rv_info_main);
+        recyclerView.setHasFixedSize(true);
 
-            Shop.Wrapper value = gson.fromJson(response.toString(), Shop.Wrapper.class);
-            final ArrayList<Shop> shops = new ArrayList<>(Arrays.asList(value.data));
+        LinearLayoutManager llM = new LinearLayoutManager(view.getContext());
+        recyclerView.setLayoutManager(llM);
 
-            Spinner shopSelect = view.findViewById(R.id.sp_info_select);
+        if(type == RequestTypeEnum.SHOP_INFO_VEHICLE) {
+            ArrayList<ShopVehicle> shopVehicles = Singleton.getInstance().getShopVehicleList();
 
-            InfoSpinnerAdapter spinnerArrayAdapter = new InfoSpinnerAdapter(view.getContext(), shops);
+            InfoAdapter<ShopVehicle> infoAdapter = new InfoAdapter<>(shopVehicles);
+            recyclerView.setAdapter(infoAdapter);
+        } else if(type == RequestTypeEnum.SHOP_INFO_ITEM){
+            ArrayList<ShopItem> shopItemList = Singleton.getInstance().getShopItemList();
 
-            shopSelect.setAdapter(spinnerArrayAdapter);
-
-            ProgressBar pbCategory = view.findViewById(R.id.pb_info_category);
-            pbCategory.setVisibility(View.GONE);
-        }else if (type.equals(CustomNetworkError.class)){
-            CustomNetworkError error = (CustomNetworkError) response;
-
-            Singleton.getInstance().setErrorMsg(error.toString());
-            Snackbar snackbar = Snackbar.make(view.findViewById(R.id.cl_info), R.string.str_error_occurred, Constants.ERROR_SNACKBAR_DURATION);
-
-            snackbar.setAction(R.string.str_view, new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    mListener.onFragmentInteraction(InfoFragment.class,Uri.parse("open_error"));
-                }
-            });
-
-            ProgressBar pbCategory = view.findViewById(R.id.pb_info_category);
-            pbCategory.setVisibility(View.GONE);
-            ProgressBar pbContent = view.findViewById(R.id.pb_info_content);
-            pbContent.setVisibility(View.GONE);
-
-            snackbar.show();
-            Singleton.getInstance().setCurrentSnackbar(snackbar);
-        }else {
-            Gson gson = new Gson();
-
-            RecyclerView recyclerView = view.findViewById(R.id.rv_info_main);
-            recyclerView.setHasFixedSize(true);
-
-            LinearLayoutManager llM = new LinearLayoutManager(view.getContext());
-            recyclerView.setLayoutManager(llM);
-
-            if(type.equals(Vehicle.Wrapper.class)){
-                Vehicle.Wrapper value = gson.fromJson(response.toString(), Vehicle.Wrapper.class);
-                ArrayList<Vehicle> vehicles = new ArrayList<>(Arrays.asList(value.data));
-
-                InfoAdapter<Vehicle> infoAdapter = new InfoAdapter<>(vehicles);
-                recyclerView.setAdapter(infoAdapter);
-            } else if(type.equals(ShopEntry.Wrapper.class)){
-                ShopEntry.Wrapper value = gson.fromJson(response.toString(), ShopEntry.Wrapper.class);
-                ArrayList<ShopEntry> vehicles = new ArrayList<>(Arrays.asList(value.data));
-
-                InfoAdapter<ShopEntry> infoAdapter = new InfoAdapter<>(vehicles);
-                recyclerView.setAdapter(infoAdapter);
-            }
-
-            ProgressBar pbContent = view.findViewById(R.id.pb_info_content);
-            pbContent.setVisibility(View.GONE);
+            InfoAdapter<ShopItem> infoAdapter = new InfoAdapter<>(shopItemList);
+            recyclerView.setAdapter(infoAdapter);
         }
+
+        ProgressBar pbContent = view.findViewById(R.id.pb_info_content);
+        pbContent.setVisibility(View.GONE);
     }
 
+    @Override
+    public void onCallback(RequestTypeEnum type) {
+        ProgressBar pbCategory = view.findViewById(R.id.pb_info_category);
+        ProgressBar pbContent = view.findViewById(R.id.pb_info_content);
+        Spinner shopSelect = view.findViewById(R.id.sp_info_select);
+
+        switch (type){
+            case SHOP:
+                final ArrayList<Shop> shops = Singleton.getInstance().getShopList();
+
+                InfoSpinnerAdapter spinnerArrayAdapter = new InfoSpinnerAdapter(view.getContext(), shops);
+
+                shopSelect.setAdapter(spinnerArrayAdapter);
+
+                pbCategory.setVisibility(View.GONE);
+                break;
+            case SHOP_INFO_ITEM:
+                updateShopInfo(RequestTypeEnum.SHOP_INFO_ITEM);
+                break;
+            case SHOP_INFO_VEHICLE:
+                updateShopInfo(RequestTypeEnum.SHOP_INFO_VEHICLE);
+                break;
+            case NETWORK_ERROR:
+                CustomNetworkError error = Singleton.getInstance().getNetworkError();
+
+                Singleton.getInstance().setErrorMsg(error.toString());
+                Snackbar snackbar = Snackbar.make(view.findViewById(R.id.cl_info), R.string.str_error_occurred, Constants.ERROR_SNACKBAR_DURATION);
+
+                snackbar.setAction(R.string.str_view, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        mListener.onFragmentInteraction(InfoFragment.class,Uri.parse("open_error"));
+                    }
+                });
+
+                pbCategory.setVisibility(View.GONE);
+                pbContent.setVisibility(View.GONE);
+
+                snackbar.show();
+                Singleton.getInstance().setCurrentSnackbar(snackbar);
+                break;
+        }
+    }
 
 }

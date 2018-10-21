@@ -1,5 +1,7 @@
 package de.realliferpg.app.interfaces;
 
+import org.json.JSONObject;
+
 public interface RequestCallbackInterface {
-    public void onResponse(Object response, Class<?> type);
+    void onResponse(RequestTypeEnum type, JSONObject object);
 }

@@ -1,26 +1,19 @@
 package de.realliferpg.app.fragments;
 
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.widget.SwipeRefreshLayout;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import com.google.gson.Gson;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import de.realliferpg.app.Constants;
 import de.realliferpg.app.R;
@@ -28,14 +21,16 @@ import de.realliferpg.app.Singleton;
 import de.realliferpg.app.adapter.ServerListAdapter;
 import de.realliferpg.app.helper.ApiHelper;
 import de.realliferpg.app.helper.FormatHelper;
+import de.realliferpg.app.interfaces.CallbackNotifyInterface;
 import de.realliferpg.app.interfaces.FragmentInteractionInterface;
 import de.realliferpg.app.interfaces.RequestCallbackInterface;
+import de.realliferpg.app.interfaces.RequestTypeEnum;
 import de.realliferpg.app.objects.CustomNetworkError;
 import de.realliferpg.app.objects.PlayerInfo;
 import de.realliferpg.app.objects.Server;
 
 
-public class MainFragment extends Fragment implements RequestCallbackInterface {
+public class MainFragment extends Fragment implements CallbackNotifyInterface {
 
     private FragmentInteractionInterface mListener;
 
@@ -46,11 +41,7 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
     }
 
     public static MainFragment newInstance() {
-        MainFragment fragment = new MainFragment();
-        Bundle args = new Bundle();
-
-        fragment.setArguments(args);
-        return fragment;
+        return new MainFragment();
     }
 
     @Override
@@ -64,7 +55,7 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
 
         this.view = inflater.inflate(R.layout.fragment_main, container, false);
 
-        final ApiHelper apiHelper = new ApiHelper(this);
+        final ApiHelper apiHelper = new ApiHelper((RequestCallbackInterface) getActivity());
         apiHelper.getServers();
         apiHelper.getPlayerStats();
 
@@ -104,6 +95,89 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
     }
 
     @Override
+    public void onCallback(RequestTypeEnum type) {
+        final ProgressBar pbPlayer = view.findViewById(R.id.pb_main_player);
+        final ProgressBar pbServer = view.findViewById(R.id.pb_main_server);
+
+        SwipeRefreshLayout sc = view.findViewById(R.id.srl_main);
+
+        TextView tvPiName = view.findViewById(R.id.tv_main_playerInfo_name);
+        TextView tvPiPID = view.findViewById(R.id.tv_main_playerInfo_pid);
+        TextView tvPiGUID = view.findViewById(R.id.tv_main_playerInfo_guid);
+
+        TextView tvPiInfoBank = view.findViewById(R.id.tv_main_playerInfo_bank);
+        TextView tvPiInfoCash = view.findViewById(R.id.tv_main_playerInfo_cash);
+        TextView tvPiInfoLevel = view.findViewById(R.id.tv_main_playerInfo_level);
+        TextView tvPiInfoSkill = view.findViewById(R.id.tv_main_playerInfo_skill);
+
+        switch (type){
+            case PLAYER:
+                FormatHelper formatHelper = new FormatHelper();
+
+                PlayerInfo playerInfo = (PlayerInfo) Singleton.getInstance().getPlayerInfo();
+                mListener.onFragmentInteraction(MainFragment.class, Uri.parse("update_login_state"));
+
+                tvPiName.setText(playerInfo.name);
+                tvPiPID.setText(playerInfo.pid);
+                tvPiGUID.setText(playerInfo.guid);
+
+                tvPiInfoBank.setText(formatHelper.formatCurrency(playerInfo.bankacc));
+                tvPiInfoCash.setText(formatHelper.formatCurrency(playerInfo.cash));
+                tvPiInfoLevel.setText(String.valueOf(playerInfo.level));
+                tvPiInfoSkill.setText(String.valueOf(playerInfo.skillpoint));
+
+
+                pbPlayer.setVisibility(View.GONE);
+
+                Singleton.getInstance().setPlayerInfo(playerInfo);
+                mListener.onFragmentInteraction(MainFragment.class, Uri.parse("update_login_state"));
+                break;
+            case SERVER:
+                final ArrayList<Server> servers = Singleton.getInstance().getServerList();
+
+                ServerListAdapter adapter = new ServerListAdapter(view.getContext(), servers);
+
+                pbServer.setVisibility(View.GONE);
+
+                final ListView listView = view.findViewById(R.id.lv_main_serverList);
+                listView.setAdapter(adapter);
+                sc.setRefreshing(false);
+                break;
+            case NETWORK_ERROR:
+                CustomNetworkError error = Singleton.getInstance().getNetworkError();
+
+                sc.setRefreshing(false);
+
+                if (error.requestType == RequestTypeEnum.PLAYER) {
+                    pbPlayer.setVisibility(View.GONE);
+
+                    tvPiInfoBank.setText("?");
+                    tvPiInfoCash.setText("?");
+                    tvPiInfoLevel.setText("?");
+                    tvPiInfoSkill.setText("?");
+
+                } else if (error.requestType == RequestTypeEnum.SERVER) {
+                    pbServer.setVisibility(View.GONE);
+                }
+
+
+                Singleton.getInstance().setErrorMsg(error.toString());
+                Snackbar snackbar = Snackbar.make(view.findViewById(R.id.cl_main), R.string.str_error_occurred, Constants.ERROR_SNACKBAR_DURATION);
+
+                snackbar.setAction(R.string.str_view, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        mListener.onFragmentInteraction(MainFragment.class, Uri.parse("open_error"));
+                    }
+                });
+
+                snackbar.show();
+                Singleton.getInstance().setCurrentSnackbar(snackbar);
+                break;
+        }
+    }
+
+    @Override
     public void onAttach(Context context) {
         super.onAttach(context);
         if (context instanceof FragmentInteractionInterface) {
@@ -120,92 +194,5 @@ public class MainFragment extends Fragment implements RequestCallbackInterface {
         mListener = null;
     }
 
-    @Override
-    public void onResponse(Object response, Class type) {
-        SwipeRefreshLayout sc = view.findViewById(R.id.srl_main);
-
-        TextView tvPiName = view.findViewById(R.id.tv_main_playerInfo_name);
-        TextView tvPiPID = view.findViewById(R.id.tv_main_playerInfo_pid);
-        TextView tvPiGUID = view.findViewById(R.id.tv_main_playerInfo_guid);
-
-        TextView tvPiInfoBank = view.findViewById(R.id.tv_main_playerInfo_bank);
-        TextView tvPiInfoCash = view.findViewById(R.id.tv_main_playerInfo_cash);
-        TextView tvPiInfoLevel = view.findViewById(R.id.tv_main_playerInfo_level);
-        TextView tvPiInfoSkill = view.findViewById(R.id.tv_main_playerInfo_skill);
-
-        if (type.equals(Server.Wrapper.class)) {
-            Gson gson = new Gson();
-
-            Server.Wrapper value = gson.fromJson(response.toString(), Server.Wrapper.class);
-
-            final ArrayList<Server> servers = new ArrayList<>(Arrays.asList(value.data));
-
-            ServerListAdapter adapter = new ServerListAdapter(view.getContext(), servers);
-
-            final ProgressBar pbServer = view.findViewById(R.id.pb_main_server);
-            pbServer.setVisibility(View.GONE);
-
-            final ListView listView = view.findViewById(R.id.lv_main_serverList);
-            listView.setAdapter(adapter);
-            sc.setRefreshing(false);
-        }else if (type.equals(PlayerInfo.Wrapper.class)) {
-            Gson gson = new Gson();
-            FormatHelper formatHelper = new FormatHelper();
-
-            PlayerInfo.Wrapper value = gson.fromJson(response.toString(), PlayerInfo.Wrapper.class);
-
-            PlayerInfo playerInfo = value.data[0];
-
-            Singleton.getInstance().setPlayerInfo(playerInfo);
-            mListener.onFragmentInteraction(MainFragment.class,Uri.parse("update_login_state"));
-
-            tvPiName.setText(playerInfo.name);
-            tvPiPID.setText(playerInfo.pid);
-            tvPiGUID.setText(playerInfo.guid);
-
-            tvPiInfoBank.setText(formatHelper.formatCurrency(playerInfo.bankacc));
-            tvPiInfoCash.setText(formatHelper.formatCurrency(playerInfo.cash));
-            tvPiInfoLevel.setText(String.valueOf( playerInfo.level));
-            tvPiInfoSkill.setText(String.valueOf( playerInfo.skillpoint));
-
-            final ProgressBar pbPlayer = view.findViewById(R.id.pb_main_player);
-            pbPlayer.setVisibility(View.GONE);
-
-            Singleton.getInstance().setPlayerInfo(playerInfo);
-            mListener.onFragmentInteraction(MainFragment.class,Uri.parse("update_login_state"));
-        }else if (type.equals(CustomNetworkError.class)){
-            CustomNetworkError error = (CustomNetworkError) response;
-
-            sc.setRefreshing(false);
-
-            if(error.requestReturnClass.equals(PlayerInfo.Wrapper.class)){
-                final ProgressBar pbPlayer = view.findViewById(R.id.pb_main_player);
-                pbPlayer.setVisibility(View.GONE);
-
-                tvPiInfoBank.setText("?");
-                tvPiInfoCash.setText("?");
-                tvPiInfoLevel.setText("?");
-                tvPiInfoSkill.setText("?");
-
-            }else if(error.requestReturnClass.equals(Server.Wrapper.class)){
-                final ProgressBar pbServer = view.findViewById(R.id.pb_main_server);
-                pbServer.setVisibility(View.GONE);
-            }
-
-
-            Singleton.getInstance().setErrorMsg(error.toString());
-            Snackbar snackbar = Snackbar.make(view.findViewById(R.id.cl_main), R.string.str_error_occurred, Constants.ERROR_SNACKBAR_DURATION);
-
-            snackbar.setAction(R.string.str_view, new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    mListener.onFragmentInteraction(MainFragment.class,Uri.parse("open_error"));
-                }
-            });
-
-            snackbar.show();
-            Singleton.getInstance().setCurrentSnackbar(snackbar);
-        }
-    }
 
 }

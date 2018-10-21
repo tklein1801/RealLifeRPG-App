@@ -11,36 +11,40 @@ import org.json.JSONObject;
 
 import de.realliferpg.app.Singleton;
 import de.realliferpg.app.interfaces.RequestCallbackInterface;
+import de.realliferpg.app.interfaces.RequestTypeEnum;
 import de.realliferpg.app.objects.CustomNetworkError;
 
 public class NetworkHelper {
 
-    public void doJSONRequest(String url, final RequestCallbackInterface callback, final Class type) {
+    public void doJSONRequest(String url, final RequestCallbackInterface callback, final RequestTypeEnum type) {
 
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest
                 (Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
 
                     @Override
                     public void onResponse(JSONObject response) {
-                        callback.onResponse(response, type);
+                        callback.onResponse(type, response);
                     }
                 }, new Response.ErrorListener() {
 
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d("NetworkHelper","Error in response");
+                        Log.d("NetworkHelper", "Error in response");
                         CustomNetworkError customNetworkError = new CustomNetworkError();
-                        customNetworkError.requestReturnClass = type;
-                        if(error.networkResponse != null){
+
+                        customNetworkError.requestType = type;
+
+                        if (error.networkResponse != null) {
                             customNetworkError.statusCode = error.networkResponse.statusCode;
                         }
                         customNetworkError.msg = error.getMessage();
 
-                        callback.onResponse(customNetworkError,CustomNetworkError.class);
+                        // TODO better handling since multiple simultaneous requests could override this error
+                        Singleton.getInstance().setNetworkError(customNetworkError);
+                        callback.onResponse(RequestTypeEnum.NETWORK_ERROR, null);
                     }
                 });
 
         Singleton.getInstance().addToRequestQueue(jsonObjectRequest);
-        Log.d("","");
     }
 }

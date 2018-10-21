@@ -18,20 +18,25 @@ import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.crashlytics.android.Crashlytics;
 import com.google.gson.Gson;
 import com.squareup.picasso.Picasso;
 
+import de.realliferpg.app.BuildConfig;
 import de.realliferpg.app.Constants;
 import de.realliferpg.app.R;
 import de.realliferpg.app.Singleton;
 import de.realliferpg.app.helper.ApiHelper;
 import de.realliferpg.app.helper.FormatHelper;
+import de.realliferpg.app.helper.PreferenceHelper;
+import de.realliferpg.app.interfaces.CallbackNotifyInterface;
 import de.realliferpg.app.interfaces.FragmentInteractionInterface;
 import de.realliferpg.app.interfaces.RequestCallbackInterface;
+import de.realliferpg.app.interfaces.RequestTypeEnum;
 import de.realliferpg.app.objects.CustomNetworkError;
 import de.realliferpg.app.objects.PlayerInfo;
 
-public class PlayerFragment extends Fragment implements RequestCallbackInterface {
+public class PlayerFragment extends Fragment implements CallbackNotifyInterface {
 
     private View view;
     private FragmentInteractionInterface mListener;
@@ -58,10 +63,10 @@ public class PlayerFragment extends Fragment implements RequestCallbackInterface
                              Bundle savedInstanceState) {
         view = inflater.inflate(R.layout.fragment_player, container, false);
 
-        final ApiHelper apiHelper = new ApiHelper(this);
-        if(Singleton.getInstance().getPlayerInfo() == null){
+        final ApiHelper apiHelper = new ApiHelper((RequestCallbackInterface) getActivity());
+        if (Singleton.getInstance().getPlayerInfo() == null) {
             apiHelper.getPlayerStats();
-        }else{
+        } else {
             showPlayerInfo();
         }
 
@@ -72,10 +77,10 @@ public class PlayerFragment extends Fragment implements RequestCallbackInterface
 
                 switch (item.getItemId()) {
                     case R.id.bnv_player_stats:
-                        mListener.onFragmentInteraction(PlayerFragment.class,Uri.parse("fragment_player_change_to_stats"));
+                        mListener.onFragmentInteraction(PlayerFragment.class, Uri.parse("fragment_player_change_to_stats"));
                         break;
                     case R.id.bnv_player_donation:
-                        mListener.onFragmentInteraction(PlayerFragment.class,Uri.parse("fragment_player_change_to_donation"));
+                        mListener.onFragmentInteraction(PlayerFragment.class, Uri.parse("fragment_player_change_to_donation"));
                         break;
                 }
                 return true;
@@ -94,10 +99,10 @@ public class PlayerFragment extends Fragment implements RequestCallbackInterface
         return view;
     }
 
-    public void showPlayerInfo(){
+    public void showPlayerInfo() {
         PlayerInfo playerInfo = Singleton.getInstance().getPlayerInfo();
 
-        mListener.onFragmentInteraction(PlayerFragment.class,Uri.parse("fragment_player_change_to_stats"));
+        mListener.onFragmentInteraction(PlayerFragment.class, Uri.parse("fragment_player_change_to_stats"));
 
         BottomNavigationView bnv = view.findViewById(R.id.bnv_player);
         bnv.setSelectedItemId(R.id.bnv_player_stats);
@@ -131,29 +136,25 @@ public class PlayerFragment extends Fragment implements RequestCallbackInterface
     }
 
     @Override
-    public void onResponse(Object response, Class type) {
-        if (type.equals(PlayerInfo.Wrapper.class)) {
-            Gson gson = new Gson();
+    public void onCallback(RequestTypeEnum type) {
 
-            PlayerInfo.Wrapper value = gson.fromJson(response.toString(), PlayerInfo.Wrapper.class);
+        switch (type){
+            case PLAYER:
+                mListener.onFragmentInteraction(PlayerFragment.class, Uri.parse("update_login_state"));
 
-            PlayerInfo playerInfo = value.data[0];
+                SwipeRefreshLayout sc = view.findViewById(R.id.srl_info);
+                sc.setRefreshing(false);
 
-            Singleton.getInstance().setPlayerInfo(playerInfo);
-            mListener.onFragmentInteraction(PlayerFragment.class,Uri.parse("update_login_state"));
+                showPlayerInfo();
+                break;
+            case NETWORK_ERROR:
+                CustomNetworkError error = Singleton.getInstance().getNetworkError();
 
-            SwipeRefreshLayout sc = view.findViewById(R.id.srl_info);
-            sc.setRefreshing(false);
-
-            showPlayerInfo();
-
-        } else if (type.equals(CustomNetworkError.class)) {
-            CustomNetworkError error = (CustomNetworkError) response;
-
-            Singleton.getInstance().setErrorMsg(error.toString());
-            mListener.onFragmentInteraction(PlayerFragment.class,Uri.parse("open_error"));
-
+                Singleton.getInstance().setErrorMsg(error.toString());
+                mListener.onFragmentInteraction(PlayerFragment.class, Uri.parse("open_error"));
+                break;
         }
+
     }
 
 }

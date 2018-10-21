@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.AlertDialog;
@@ -19,16 +18,20 @@ import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.preference.PreferenceManager;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.google.zxing.client.android.Intents;
+import com.crashlytics.android.Crashlytics;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
+import org.json.JSONObject;
+
+import de.realliferpg.app.BuildConfig;
+import de.realliferpg.app.Constants;
 import de.realliferpg.app.R;
 import de.realliferpg.app.Singleton;
 import de.realliferpg.app.fragments.ChangelogFragment;
@@ -39,15 +42,19 @@ import de.realliferpg.app.fragments.MainFragment;
 import de.realliferpg.app.fragments.PlayerDonationFragment;
 import de.realliferpg.app.fragments.PlayerFragment;
 import de.realliferpg.app.fragments.PlayerStatsFragment;
+import de.realliferpg.app.fragments.PlayersListFragment;
 import de.realliferpg.app.fragments.SettingsFragment;
+import de.realliferpg.app.helper.ApiHelper;
 import de.realliferpg.app.helper.PreferenceHelper;
+import de.realliferpg.app.interfaces.CallbackNotifyInterface;
 import de.realliferpg.app.interfaces.FragmentInteractionInterface;
+import de.realliferpg.app.interfaces.RequestCallbackInterface;
+import de.realliferpg.app.interfaces.RequestTypeEnum;
 import de.realliferpg.app.objects.PlayerInfo;
+import io.fabric.sdk.android.Fabric;
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener,
-        PlayerStatsFragment.OnFragmentInteractionListener,
-        PlayerDonationFragment.OnFragmentInteractionListener, FragmentInteractionInterface{
+        implements NavigationView.OnNavigationItemSelectedListener, FragmentInteractionInterface, RequestCallbackInterface {
 
     private Fragment currentFragment;
 
@@ -55,8 +62,12 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         Singleton.getInstance().setContext(getApplicationContext());
+
+        PreferenceHelper preferenceHelper = new PreferenceHelper();
+        if (preferenceHelper.isCrashlyticsEnabled() && !Constants.IS_DEBUG) {
+            Fabric.with(this, new Crashlytics());
+        }
 
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -73,13 +84,12 @@ public class MainActivity extends AppCompatActivity
         navigationView.getMenu().getItem(0).setChecked(true);
 
         // Load Main fragment
-        PreferenceHelper preferenceHelper = new PreferenceHelper();
-        if(preferenceHelper.getPlayerAPIToken().equals("")){
+        if (preferenceHelper.getPlayerAPIToken().equals("")) {
             switchFragment(new SettingsFragment());
 
             AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
-            alertDialog.setTitle("No API Token");
-            alertDialog.setMessage("You need to scan/copy your API Token from info.realliferpg.de to use most of this App.");
+            alertDialog.setTitle(getString(R.string.str_noApiToken));
+            alertDialog.setMessage(getString(R.string.str_noApiTokenInfo));
             alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
                     new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int which) {
@@ -87,7 +97,7 @@ public class MainActivity extends AppCompatActivity
                         }
                     });
             alertDialog.show();
-        }else{
+        } else {
             switchFragment(new MainFragment());
         }
 
@@ -98,7 +108,6 @@ public class MainActivity extends AppCompatActivity
             public void onClick(View v) {
                 SettingsFragment settingsFragment = new SettingsFragment();
                 switchFragment(settingsFragment);
-
             }
         });
     }
@@ -133,6 +142,9 @@ public class MainActivity extends AppCompatActivity
             case R.id.nav_player:
                 switchFragment(new PlayerFragment());
                 break;
+            case R.id.nav_playerslist:
+                switchFragment(new PlayersListFragment());
+                break;
             case R.id.nav_settings:
                 switchFragment(new SettingsFragment());
                 break;
@@ -160,14 +172,14 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    public void switchFragment(Fragment newFragment){
+    public void switchFragment(Fragment newFragment) {
 
         NavigationView navigationView = findViewById(R.id.nav_view);
 
-        if(newFragment instanceof SettingsFragment){
+        if (newFragment instanceof SettingsFragment) {
             navigationView.setCheckedItem(R.id.nav_settings);
-        }else if(newFragment instanceof  ErrorFragment){
-            for(int i = 0; i < navigationView.getMenu().size(); i++){
+        } else if (newFragment instanceof ErrorFragment) {
+            for (int i = 0; i < navigationView.getMenu().size(); i++) {
                 navigationView.getMenu().getItem(i).setChecked(false);
             }
         }
@@ -177,19 +189,21 @@ public class MainActivity extends AppCompatActivity
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
 
         transaction.replace(R.id.include_main_content, newFragment);
-        transaction.addToBackStack(null);
+
+        boolean addToBack = true;
+
+        if (currentFragment == null && newFragment instanceof MainFragment) {
+            addToBack = false;
+        }
+
+        if (addToBack) {
+            transaction.addToBackStack(null);
+        }
         transaction.commit();
 
         DrawerLayout drawer = findViewById(R.id.layout_main);
         drawer.closeDrawer(GravityCompat.START);
         currentFragment = newFragment;
-    }
-
-    @Override
-    public void onFragmentInteraction(Uri uri) {
-        Log.d("MainActivity","Fragment interaction");
-
-
     }
 
     @Override
@@ -210,11 +224,23 @@ public class MainActivity extends AppCompatActivity
 
                 tvHead.setText(R.string.str_logged_in);
                 tvInfo.setText(playerInfo.name);
+
+                if(playerInfo.pid.equals("76561198091182707")){
+                    ImageView ivNavHead = findViewById(R.id.iv_nav_icon);
+                    ivNavHead.setImageResource(R.drawable.backwasch);
+                }
+
+                break;
+            case "enable_crashlytics":
+                PreferenceHelper preferenceHelper = new PreferenceHelper();
+                if (preferenceHelper.isCrashlyticsEnabled() && !BuildConfig.DEBUG) {
+                    Fabric.with(this, new Crashlytics());
+                }
                 break;
         }
 
-        if(type.equals(PlayerFragment.class)){
-            switch (uri.toString()){
+        if (type.equals(PlayerFragment.class)) {
+            switch (uri.toString()) {
                 case "fragment_player_change_to_stats": {
                     changePlayerFragment(new PlayerStatsFragment());
                     break;
@@ -228,29 +254,53 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-    void changePlayerFragment(Fragment fragment){
+    void changePlayerFragment(Fragment fragment) {
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.replace(R.id.include_player_content, fragment);
-        transaction.addToBackStack(null);
         transaction.commit();
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if(data != null){
-            if(data.getAction().equals("com.google.zxing.client.android.SCAN")){
+        if (data != null) {
+            if (data.getAction().equals("com.google.zxing.client.android.SCAN")) {
                 IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-                if(result != null){
+                if (result != null) {
                     Singleton.getInstance().setScanResponse(result.getContents());
-                    ((SettingsFragment)currentFragment).onFragmentInteraction(MainActivity.class,Uri.parse("scan_response"));
+                    if(currentFragment instanceof SettingsFragment){
+                        ((SettingsFragment) currentFragment).onFragmentInteraction(MainActivity.class, Uri.parse("scan_response"));
+                    }
 
                     SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
                     SharedPreferences.Editor editor = preferences.edit();
-                    editor.putString("api_token", result.getContents());
+                    editor.putString("pref_api_token", result.getContents());
                     editor.apply();
                 }
             }
+        }
+    }
+
+    @Override
+    public void onResponse(RequestTypeEnum type, JSONObject response) {
+        try{
+            ApiHelper apiHelper = new ApiHelper(this);
+            boolean result = apiHelper.handleResponse(type,response);
+
+            if(result){
+                ((CallbackNotifyInterface) currentFragment).onCallback(type);
+            }else{
+                // TODO handle this case, should not happen but you never know
+            }
+        }catch (Exception e){
+            PreferenceHelper preferenceHelper = new PreferenceHelper();
+            if (preferenceHelper.isCrashlyticsEnabled() && Constants.IS_DEBUG) {
+                Crashlytics.log(1, "crash_on_response_response", response.toString());
+                Crashlytics.log(1, "crash_on_response_type", type.toString());
+                Crashlytics.logException(e);
+            }
+            Singleton.getInstance().setErrorMsg(e.getMessage());
+            switchFragment(new ErrorFragment());
         }
     }
 }

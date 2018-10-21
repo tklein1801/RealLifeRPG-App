@@ -9,8 +9,13 @@ import com.android.volley.toolbox.Volley;
 
 import java.util.ArrayList;
 
+import de.realliferpg.app.objects.Changelog;
+import de.realliferpg.app.objects.CustomNetworkError;
 import de.realliferpg.app.objects.PlayerInfo;
 import de.realliferpg.app.objects.Server;
+import de.realliferpg.app.objects.Shop;
+import de.realliferpg.app.objects.ShopItem;
+import de.realliferpg.app.objects.ShopVehicle;
 
 public class Singleton {
     private static final Singleton instance = new Singleton();
@@ -29,11 +34,18 @@ public class Singleton {
     private Snackbar currentSnackbar;
 
     private PlayerInfo playerInfo;
+    private ArrayList<Server> serverList;
+    private ArrayList<Changelog> changelogList;
+    private ArrayList<Shop> shopList;
+    private ArrayList<ShopVehicle> shopVehicleList;
+    private ArrayList<ShopItem> shopItemList;
+
+    private CustomNetworkError networkError;
 
     private String scanResponse;
     private String errorMsg;
 
-    public RequestQueue getRequestQueue() {
+    private RequestQueue getRequestQueue() {
         if (volleyQueue == null) {
             // getApplicationContext() is key, it keeps you from leaking the
             // Activity or BroadcastReceiver if someone passes one in.
@@ -93,5 +105,53 @@ public class Singleton {
         if(currentSnackbar != null){
             currentSnackbar.dismiss();
         }
+    }
+
+    public ArrayList<Server> getServerList() {
+        return serverList;
+    }
+
+    public void setServerList(ArrayList<Server> serverList) {
+        this.serverList = serverList;
+    }
+
+    public ArrayList<Changelog> getChangelogList() {
+        return changelogList;
+    }
+
+    public void setChangelogList(ArrayList<Changelog> changelogList) {
+        this.changelogList = changelogList;
+    }
+
+    public ArrayList<Shop> getShopList() {
+        return shopList;
+    }
+
+    public void setShopList(ArrayList<Shop> shopList) {
+        this.shopList = shopList;
+    }
+
+    public ArrayList<ShopVehicle> getShopVehicleList() {
+        return shopVehicleList;
+    }
+
+    public void setShopVehicleList(ArrayList<ShopVehicle> shopVehicleList) {
+        this.shopVehicleList = shopVehicleList;
+    }
+
+    public ArrayList<ShopItem> getShopItemList() {
+        return shopItemList;
+    }
+
+    public void setShopItemList(ArrayList<ShopItem> shopItemList) {
+        this.shopItemList = shopItemList;
+    }
+
+    public CustomNetworkError getNetworkError() {
+        return networkError;
+    }
+
+    public void setNetworkError(CustomNetworkError networkError) {
+        this.networkError = networkError;
     }
 }

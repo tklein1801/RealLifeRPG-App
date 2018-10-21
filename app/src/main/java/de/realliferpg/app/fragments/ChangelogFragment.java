@@ -29,12 +29,14 @@ import de.realliferpg.app.R;
 import de.realliferpg.app.Singleton;
 import de.realliferpg.app.adapter.ChangelogAdapter;
 import de.realliferpg.app.helper.ApiHelper;
+import de.realliferpg.app.interfaces.CallbackNotifyInterface;
 import de.realliferpg.app.interfaces.FragmentInteractionInterface;
 import de.realliferpg.app.interfaces.RequestCallbackInterface;
+import de.realliferpg.app.interfaces.RequestTypeEnum;
 import de.realliferpg.app.objects.Changelog;
 import de.realliferpg.app.objects.CustomNetworkError;
 
-public class ChangelogFragment extends Fragment implements RequestCallbackInterface {
+public class ChangelogFragment extends Fragment implements CallbackNotifyInterface {
 
     private FragmentInteractionInterface mListener;
     private View view;
@@ -44,10 +46,7 @@ public class ChangelogFragment extends Fragment implements RequestCallbackInterf
     }
 
     public static ChangelogFragment newInstance() {
-        ChangelogFragment fragment = new ChangelogFragment();
-        Bundle args = new Bundle();
-        fragment.setArguments(args);
-        return fragment;
+        return new ChangelogFragment();
     }
 
     @Override
@@ -61,7 +60,7 @@ public class ChangelogFragment extends Fragment implements RequestCallbackInterf
 
         this.view = inflater.inflate(R.layout.fragment_changelog, container, false);
 
-        final ApiHelper apiHelper = new ApiHelper(this);
+        final ApiHelper apiHelper = new ApiHelper((RequestCallbackInterface) getActivity());
         apiHelper.getChangelog();
 
         final ProgressBar pbChangelog = view.findViewById(R.id.pb_changelog_main);
@@ -76,84 +75,80 @@ public class ChangelogFragment extends Fragment implements RequestCallbackInterf
                 pbChangelog.setVisibility(View.VISIBLE);
 
                 ExpandableListView listView = view.findViewById(R.id.lv_changelog_main);
-                listView.setAdapter((BaseExpandableListAdapter)null);
+                listView.setAdapter((BaseExpandableListAdapter) null);
             }
         });
 
         return view;
     }
 
-
     @Override
-    public void onResponse(Object response, Class type) {
-
+    public void onCallback(RequestTypeEnum type) {
+        ProgressBar pbChangelog = view.findViewById(R.id.pb_changelog_main);
         SwipeRefreshLayout sc = view.findViewById(R.id.srl_changelog);
         sc.setRefreshing(false);
 
-        if (type.equals(Changelog.Wrapper.class)) {
+        switch (type) {
+            case CHANGELOG:
+                ArrayList<Changelog> changelogs = Singleton.getInstance().getChangelogList();
 
-            Gson gson = new Gson();
-            Changelog.Wrapper value = gson.fromJson(response.toString(), Changelog.Wrapper.class);
+                final ExpandableListView listView = view.findViewById(R.id.lv_changelog_main);
 
-            ArrayList<Changelog> changelogs = new ArrayList<>(Arrays.asList(value.data));
+                ArrayList<Changelog> temp = new ArrayList<>();
 
-            final ExpandableListView listView = view.findViewById(R.id.lv_changelog_main);
+                for (Changelog temp_changelog : changelogs) {
 
-            ArrayList<Changelog> temp = new ArrayList<>();
+                    if (temp_changelog.change_mission.length > 0) {
+                        temp_changelog.change_mission = addHeader("<b>Mission</b>", temp_changelog.change_mission);
+                    }
 
-            for (Changelog temp_changelog : changelogs) {
+                    if (temp_changelog.change_mod.length > 0) {
+                        temp_changelog.change_mod = addHeader("<b>Mod</b>", temp_changelog.change_mod);
+                    }
 
-                if (temp_changelog.change_mission.length > 0) {
-                    temp_changelog.change_mission = addHeader("<b>Mission</b>", temp_changelog.change_mission);
+                    if (temp_changelog.change_map.length > 0) {
+                        temp_changelog.change_map = addHeader("<b>Map</b>", temp_changelog.change_map);
+                    }
+
+                    temp.add(temp_changelog);
                 }
 
-                if (temp_changelog.change_mod.length > 0) {
-                    temp_changelog.change_mod = addHeader("<b>Mod</b>", temp_changelog.change_mod);
-                }
+                ChangelogAdapter listAdapter = new ChangelogAdapter(this.getContext(), temp);
 
-                if (temp_changelog.change_map.length > 0) {
-                    temp_changelog.change_map = addHeader("<b>Map</b>", temp_changelog.change_map);
-                }
+                listView.setAdapter(listAdapter);
 
-                temp.add(temp_changelog);
-            }
+                pbChangelog.setVisibility(View.GONE);
 
-            ChangelogAdapter listAdapter = new ChangelogAdapter(this.getContext(), temp);
+                // collapse all but selected item
+                listView.setOnGroupExpandListener(new ExpandableListView.OnGroupExpandListener() {
+                    int previousItem = -1;
 
-            listView.setAdapter(listAdapter);
+                    @Override
+                    public void onGroupExpand(int groupPosition) {
+                        if (groupPosition != previousItem)
+                            listView.collapseGroup(previousItem);
+                        previousItem = groupPosition;
+                    }
+                });
+                break;
+            case NETWORK_ERROR:
+                CustomNetworkError error = Singleton.getInstance().getNetworkError();
 
-            ProgressBar pbChangelog = view.findViewById(R.id.pb_changelog_main);
-            pbChangelog.setVisibility(View.GONE);
+                pbChangelog.setVisibility(View.GONE);
 
-            // collapse all but selected item
-            listView.setOnGroupExpandListener(new ExpandableListView.OnGroupExpandListener() {
-                int previousItem = -1;
+                Singleton.getInstance().setErrorMsg(error.toString());
+                Snackbar snackbar = Snackbar.make(view.findViewById(R.id.cl_changelog), R.string.str_error_occurred, Constants.ERROR_SNACKBAR_DURATION);
 
-                @Override
-                public void onGroupExpand(int groupPosition) {
-                    if (groupPosition != previousItem)
-                        listView.collapseGroup(previousItem);
-                    previousItem = groupPosition;
-                }
-            });
-        }else if(type.equals(CustomNetworkError.class)){
-            CustomNetworkError error = (CustomNetworkError) response;
+                snackbar.setAction(R.string.str_view, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        mListener.onFragmentInteraction(ChangelogFragment.class, Uri.parse("open_error"));
+                    }
+                });
 
-            ProgressBar pbChangelog = view.findViewById(R.id.pb_changelog_main);
-            pbChangelog.setVisibility(View.GONE);
-
-            Singleton.getInstance().setErrorMsg(error.toString());
-            Snackbar snackbar = Snackbar.make(view.findViewById(R.id.cl_changelog), R.string.str_error_occurred, Constants.ERROR_SNACKBAR_DURATION);
-
-            snackbar.setAction(R.string.str_view, new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    mListener.onFragmentInteraction(ChangelogFragment.class,Uri.parse("open_error"));
-                }
-            });
-
-            snackbar.show();
-            Singleton.getInstance().setCurrentSnackbar(snackbar);
+                snackbar.show();
+                Singleton.getInstance().setCurrentSnackbar(snackbar);
+                break;
         }
     }
 
