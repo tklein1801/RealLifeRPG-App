@@ -126,6 +126,11 @@
     <string name="str_rac08">Co-Leiter</string> <!-- R8, adac-level 8 -->
     <string name="str_rac09">Leiter</string> <!-- R9, adac-level 9 -->
 
+
+    <string name="str_cbs">CBS</string>
+    <string name="str_cbspicture">CBS picture</string>
+    <string name="str_cbs_money_label">Fundings</string>
+
     <!-- Market items -->
     <string name="aluminum_r">aluminum</string>
     <string name="apple">apple</string>
@@ -162,7 +167,6 @@
     <string name="wheat_r">wheat fluour</string>
     <string name="wheat_u">wheat</string>
     <string name="wood_r">wood</string>
-
 
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
